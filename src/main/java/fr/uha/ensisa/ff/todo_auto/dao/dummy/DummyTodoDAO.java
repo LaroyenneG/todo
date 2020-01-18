@@ -1,31 +1,31 @@
 package fr.uha.ensisa.ff.todo_auto.dao.dummy;
 
+import fr.uha.ensisa.ff.todo_auto.dao.TodoDAO;
+import fr.uha.ensisa.ff.todo_auto.dao.UnknownListException;
+import fr.uha.ensisa.ff.todo_auto.dao.UnknownUserException;
+import fr.uha.ensisa.ff.todo_auto.dao.UserAlreadyExistsException;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import fr.uha.ensisa.ff.todo_auto.dao.TodoDAO;
-import fr.uha.ensisa.ff.todo_auto.dao.UnknownListException;
-import fr.uha.ensisa.ff.todo_auto.dao.UnknownUserException;
-import fr.uha.ensisa.ff.todo_auto.dao.UserAlreadyExistsException;
-
 public class DummyTodoDAO implements TodoDAO {
 
-	private Map<String /* name */, DummyUser > users = new TreeMap<>();
-		
-	public DummyTodoDAO() {
-		DummyUser u;
-		
-		u = new DummyUser("user@example.com", "{bcrypt}$2a$10$FY9OnO.Hv0Q8w7ia5OWi8eFF4KDhA9f.732GLCO3VxgBMCElmIbcm")
-				.addTask("A first task")
-				.addTask("A second task")
-				.addTask("A lastTask")
-				;
-		u.addList("Perso")
-			.addTask("A personal task")
-			;
+    private Map<String /* name */, DummyUser> users = new TreeMap<>();
+
+    private DummyTodoDAO() {
+        DummyUser u;
+
+        u = new DummyUser("user@example.com", "{bcrypt}$2a$10$FY9OnO.Hv0Q8w7ia5OWi8eFF4KDhA9f.732GLCO3VxgBMCElmIbcm")
+                .addTask("A first task")
+                .addTask("A second task")
+                .addTask("A lastTask")
+        ;
+        u.addList("Perso")
+                .addTask("A personal task")
+        ;
 		u.addList("Empty");
 		users.put(u.getName(), u);
 		

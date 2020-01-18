@@ -1,7 +1,7 @@
 package fr.uha.ensisa.ff.todo_auto.config;
 
-import java.util.concurrent.TimeUnit;
-
+import fr.uha.ensisa.ff.todo_auto.dao.TodoDAO;
+import fr.uha.ensisa.ff.todo_auto.dao.mongo.MongoTodoDAO;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -12,8 +12,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import fr.uha.ensisa.ff.todo_auto.dao.TodoDAO;
-import fr.uha.ensisa.ff.todo_auto.dao.dummy.DummyTodoDAO;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @ComponentScan(basePackages="fr.uha.ensisa.ff.todo_auto")
@@ -36,7 +35,7 @@ public class MvcConfiguration implements WebMvcConfigurer {
 	
 	@Bean
 	public TodoDAO getTodoDAO() {
-		// Change to real DAO
-		return new DummyTodoDAO();
-	}
+        // Change to real DAO
+        return new MongoTodoDAO();
+    }
 }
