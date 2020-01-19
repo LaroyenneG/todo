@@ -4,7 +4,7 @@ import com.mongodb.MongoWriteException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
-import com.mongodb.client.result.UpdateResult;
+import com.mongodb.client.model.Updates;
 import fr.uha.ensisa.ff.todo_auto.dao.TodoDAO;
 import fr.uha.ensisa.ff.todo_auto.dao.UnknownListException;
 import fr.uha.ensisa.ff.todo_auto.dao.UnknownUserException;
@@ -12,6 +12,7 @@ import fr.uha.ensisa.ff.todo_auto.dao.UserAlreadyExistsException;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,8 @@ public class MongoTodoDAO implements TodoDAO {
 
     private static final String USER_COLLECTION_NAME = "users";
     private static final String LIST_COLLECTION_NAME = "lists";
+    private static final String DEFAULT_TASK_COLLECTION_NAME = "default";
+
 
     private final MongoClient mongoClient;
 
@@ -49,6 +52,14 @@ public class MongoTodoDAO implements TodoDAO {
         MongoDatabase mongoDatabase = getDatabase();
 
         return mongoDatabase.getCollection(LIST_COLLECTION_NAME);
+    }
+
+
+    private MongoCollection<Document> getDefaultTasksCollection() {
+
+        MongoDatabase mongoDatabase = getDatabase();
+
+        return mongoDatabase.getCollection(DEFAULT_TASK_COLLECTION_NAME);
     }
 
 
@@ -89,12 +100,31 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public String createDefaultTask(String user, String taskName) throws UnknownUserException {
 
+        MongoCollection<Document> usersCollection = getUsersCollection();
 
-        return null;
+        Document userDocument = usersCollection.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+
+        MongoCollection<Document> defaultTasksCollection = getDefaultTasksCollection();
+
+        Document defaultTaskDocument = new Document();
+
+        defaultTaskDocument.append("user", userDocument.getString("_id"));
+        defaultTaskDocument.append("name", taskName);
+        defaultTaskDocument.append("done", false);
+
+        defaultTasksCollection.insertOne(defaultTaskDocument);
+
+        return defaultTaskDocument.getObjectId("_id").toHexString();
     }
 
     @Override
     public List<Map<String, Object>> getDefaultTasks(String user) throws UnknownUserException {
+
 
 
         return null;
@@ -103,16 +133,49 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public void setDefaultTaskDone(String user, String taskId, boolean done) throws UnknownUserException {
 
+        MongoCollection<Document> usersCollection = getUsersCollection();
+
+        Document userDocument = usersCollection.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+        MongoCollection<Document> defaultTasksCollection = getDefaultTasksCollection();
+
+        defaultTasksCollection.updateOne(Filters.eq("_id", new ObjectId(taskId)), Updates.set("done", done));
     }
 
     @Override
     public void renameDefaultTask(String user, String taskId, String newName) throws UnknownUserException {
 
+        MongoCollection<Document> usersCollection = getUsersCollection();
+
+        Document userDocument = usersCollection.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+        MongoCollection<Document> defaultTasksCollection = getDefaultTasksCollection();
+
+        defaultTasksCollection.updateOne(Filters.eq("_id", new ObjectId(taskId)), Updates.set("name", newName));
     }
 
     @Override
     public void deleteDefaultTask(String user, String taskId) throws UnknownUserException {
 
+        MongoCollection<Document> usersCollection = getUsersCollection();
+
+        Document userDocument = usersCollection.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+        MongoCollection<Document> defaultTasksCollection = getDefaultTasksCollection();
+
+        defaultTasksCollection.deleteOne(Filters.eq("_id", new ObjectId(taskId)));
     }
 
     @Override
@@ -193,23 +256,87 @@ public class MongoTodoDAO implements TodoDAO {
             throw new UnknownUserException(user);
         }
 
+
         MongoCollection<Document> listsCollection = getListsCollection();
 
-        Document update = new Document();
-        update.append("name", newName);
+        Document listDocument = listsCollection.find(Filters.eq("_id", new ObjectId(listId))).projection(Projections.include("name")).first();
+
+        if (listDocument == null) {
+            throw new UnknownListException(user, listId);
+        }
 
 
-        UpdateResult updateResult = listsCollection.updateOne(Filters.eq("_id", new ObjectId(listId)), update);
+        listsCollection.updateOne(listDocument, Updates.set("name", newName));
     }
 
     @Override
     public List<Map<String, Object>> getTasksOfList(String user, String listId) throws UnknownUserException, UnknownListException {
-        return null;
+
+        MongoCollection<Document> usersDocument = getUsersCollection();
+
+        Document userDocument = usersDocument.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+        MongoCollection<Document> listsCollection = getListsCollection();
+
+        Document listDocument = listsCollection.find(Filters.eq("_id", new ObjectId(listId))).projection(Projections.include("tasks")).first();
+
+        if (listDocument == null) {
+            throw new UnknownListException(user, listId);
+        }
+
+
+        List<Map<String, Object>> mapList = new ArrayList<>();
+
+
+        List<Document> tasks = listDocument.getList("tasks", Document.class);
+
+        if (tasks != null) {
+            for (Document task : tasks) {
+
+                Map<String, Object> stringObjectMap = new HashMap<>();
+
+                stringObjectMap.put("id", task.getObjectId("_id").toHexString());
+                stringObjectMap.put("name", task.getString("name"));
+                stringObjectMap.put("done", task.getBoolean("done"));
+
+                mapList.add(stringObjectMap);
+            }
+        }
+
+        return mapList;
     }
 
     @Override
     public String createListTask(String user, String listId, String taskName) throws UnknownUserException, UnknownListException {
-        return null;
+
+        MongoCollection<Document> usersDocument = getUsersCollection();
+
+        Document userDocument = usersDocument.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+        MongoCollection<Document> listsCollection = getListsCollection();
+
+        Document listDocument = listsCollection.find(Filters.eq("_id", new ObjectId(listId))).projection(Projections.include("tasks")).first();
+
+        if (listDocument == null) {
+            throw new UnknownListException(user, listId);
+        }
+
+        Document taskDocument = new Document();
+        taskDocument.append("_id", new ObjectId());
+        taskDocument.append("name", taskName);
+        taskDocument.append("done", false);
+
+        listsCollection.updateOne(listDocument, Updates.push("tasks", taskDocument));
+
+        return taskDocument.getObjectId("_id").toHexString();
     }
 
     @Override
@@ -220,10 +347,12 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public void setListTaskDone(String user, String listId, String taskId, boolean done) throws UnknownUserException, UnknownListException {
 
+
     }
 
     @Override
     public void deleteListTask(String user, String listId, String taskId) throws UnknownUserException, UnknownListException {
+
 
     }
 
