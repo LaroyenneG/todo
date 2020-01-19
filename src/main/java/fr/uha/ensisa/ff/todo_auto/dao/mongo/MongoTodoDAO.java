@@ -368,7 +368,37 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public void setListTaskDone(String user, String listId, String taskId, boolean done) throws UnknownUserException, UnknownListException {
 
+        MongoCollection<Document> usersDocument = getUsersCollection();
 
+        Document userDocument = usersDocument.find(Filters.eq("_id", user)).projection(Projections.include("_id")).first();
+
+        if (userDocument == null) {
+            throw new UnknownUserException(user);
+        }
+
+
+        MongoCollection<Document> listsCollection = getListsCollection();
+
+        Document listDocument = listsCollection.find(Filters.eq("_id", new ObjectId(listId))).projection(Projections.include("tasks", "_id")).first();
+
+        if (listDocument == null) {
+            throw new UnknownListException(user, listId);
+        }
+
+        List<Document> tasks = listDocument.getList("tasks", Document.class);
+
+        /*
+         pas bien
+         */
+        if (tasks != null) {
+            for (Document task : tasks) {
+                if (task.getObjectId("_id").equals(new ObjectId(taskId))) {
+                    task.append("done", done);
+                }
+            }
+
+            listsCollection.updateOne(listDocument, Updates.set("tasks", tasks));
+        }
     }
 
     @Override
@@ -386,6 +416,7 @@ public class MongoTodoDAO implements TodoDAO {
         MongoCollection<Document> listsCollection = getListsCollection();
 
         DeleteResult deleteResult = listsCollection.deleteOne(Filters.eq("_id", new ObjectId(listId)));
+
 
         if (!deleteResult.wasAcknowledged()) {
             throw new UnknownListException(user, listId);
