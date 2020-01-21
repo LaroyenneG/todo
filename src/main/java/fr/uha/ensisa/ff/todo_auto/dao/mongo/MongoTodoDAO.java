@@ -154,7 +154,7 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public void deleteDefaultTask(String user, String taskId) throws UnknownUserException {
 
-        UpdateResult updateResult = usersCollection.updateOne(Filters.eq(ID_FIELD, user), Updates.pull(TASKS_FIELD, Filters.eq(TASKS_FIELD + '.' + ID_FIELD, new ObjectId(taskId))));
+        UpdateResult updateResult = usersCollection.updateOne(Filters.eq(ID_FIELD, user), Updates.pull(TASKS_FIELD, Filters.eq(ID_FIELD, new ObjectId(taskId))));
 
         if (!updateResult.wasAcknowledged()) {
             throw new UnknownUserException(user);
@@ -281,7 +281,7 @@ public class MongoTodoDAO implements TodoDAO {
     @Override
     public void deleteListTask(String user, String listId, String taskId) throws UnknownListException {
 
-        UpdateResult updateResult = listsCollection.updateOne(Filters.eq(ID_FIELD, new ObjectId(listId)), Updates.pull(TASKS_FIELD, Filters.eq(TASKS_FIELD + '.' + ID_FIELD, new ObjectId(taskId))));
+        UpdateResult updateResult = listsCollection.updateOne(Filters.eq(ID_FIELD, new ObjectId(listId)), Updates.pull(TASKS_FIELD, Filters.eq(ID_FIELD, new ObjectId(taskId))));
 
         if (!updateResult.wasAcknowledged()) {
             throw new UnknownListException(user, listId);
